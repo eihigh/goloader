@@ -4,13 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/eh-steve/goloader"
-	"github.com/eh-steve/goloader/jit"
-	"github.com/eh-steve/goloader/jit/testdata/common"
-	"github.com/eh-steve/goloader/jit/testdata/test_issue55/p"
-	"github.com/eh-steve/goloader/jit/testdata/test_type_mismatch"
-	"github.com/eh-steve/goloader/jit/testdata/test_type_mismatch/typedef"
-	"github.com/eh-steve/goloader/unload/jsonunload"
 	"io"
 	"log"
 	"net"
@@ -30,6 +23,14 @@ import (
 	"testing"
 	"time"
 	"unsafe"
+
+	"github.com/eh-steve/goloader"
+	"github.com/eh-steve/goloader/jit"
+	"github.com/eh-steve/goloader/jit/testdata/common"
+	"github.com/eh-steve/goloader/jit/testdata/test_issue55/p"
+	"github.com/eh-steve/goloader/jit/testdata/test_type_mismatch"
+	"github.com/eh-steve/goloader/jit/testdata/test_type_mismatch/typedef"
+	"github.com/eh-steve/goloader/unload/jsonunload"
 )
 
 type testData struct {
@@ -44,7 +45,7 @@ var baseConfig = jit.BuildConfig{
 	ExtraBuildFlags:                  nil,
 	BuildEnv:                         os.Environ(),
 	TmpDir:                           "",
-	DebugLog:                         false,
+	DebugLog:                         true,
 	SymbolNameOrder:                  nil,
 	RandomSymbolNameOrder:            false,
 	RelocationDebugWriter:            nil,

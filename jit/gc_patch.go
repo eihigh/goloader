@@ -96,6 +96,7 @@ func goEnv(goBinary string) (map[string]string, error) {
 // PatchGC checks whether the go compiler at a given GOROOT requires patching
 // to emit export types and if so, applies a patch and rebuilds it and tests again
 func PatchGC(goBinary string, debugLog bool) error {
+	return nil
 	var goRootPath string
 	var goToolDir string
 	if !filepath.IsAbs(goBinary) {
