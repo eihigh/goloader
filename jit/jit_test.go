@@ -142,7 +142,7 @@ func TestJitSimpleFunctions(t *testing.T) {
 		pkg:   "./testdata/test_simple_func",
 	}
 	// testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
-	testNames := []string{"BuildGoPackage"}
+	testNames := []string{"BuildGoPackage", "BuildGoPackage"}
 
 	for _, testName := range testNames {
 		t.Run(testName, func(t *testing.T) {
@@ -169,10 +169,13 @@ func TestJitSimpleFunctions(t *testing.T) {
 			// if !bytes.Equal(bytesOut, []byte{1, 2, 3}) {
 			// 	t.Errorf("expected %v, got %v", []byte{1, 2, 3}, bytesOut)
 			// }
-			// err = module.Unload()
-			// if err != nil {
-			// 	t.Fatal(err)
-			// }
+			var err error
+			err = module.Unload()
+			if err != nil {
+				t.Fatal(err)
+			}
+			fmt.Println("waiting for 10 seconds")
+			time.Sleep(10 * time.Second)
 		})
 	}
 }
