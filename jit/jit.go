@@ -8,9 +8,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/eihigh/goloader"
-	"github.com/eihigh/goloader/libc"
-	"github.com/eihigh/goloader/obj"
 	"io"
 	"log"
 	"os"
@@ -22,6 +19,10 @@ import (
 	"strings"
 	"sync"
 	_ "unsafe"
+
+	"github.com/eihigh/goloader"
+	"github.com/eihigh/goloader/libc"
+	"github.com/eihigh/goloader/obj"
 )
 
 // A shared map used across all importers of this JIT package within a binary to store all the packages and symbols included in the main binary
@@ -112,7 +113,7 @@ type BuildConfig struct {
 
 func mergeBuildFlags(extraBuildFlags []string, dynlink bool) []string {
 	// This -exporttypes flag requires the Go toolchain to have been patched via PatchGC()
-	var gcFlags = []string{"-exporttypes"}
+	var gcFlags = []string{""}
 	if dynlink {
 		// Also add -dynlink to force R_PCREL relocs to use R_GOTPCREL to allow offsets larger than 32-bits for inter-package relocs
 		gcFlags = append(gcFlags, "-dynlink")
