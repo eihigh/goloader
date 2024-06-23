@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"unsafe"
 
-	"github.com/eh-steve/goloader/mmap"
+	"github.com/eihigh/goloader/mmap"
 )
 
 //go:linkname add runtime.add

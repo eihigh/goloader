@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/eh-steve/goloader/jit"
+	"github.com/eihigh/goloader/jit"
 	"log"
 	"os"
 )

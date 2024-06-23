@@ -15,10 +15,10 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/eh-steve/goloader/obj"
-	"github.com/eh-steve/goloader/objabi/reloctype"
-	"github.com/eh-steve/goloader/objabi/symkind"
-	"github.com/eh-steve/goloader/stackobject"
+	"github.com/eihigh/goloader/obj"
+	"github.com/eihigh/goloader/objabi/reloctype"
+	"github.com/eihigh/goloader/objabi/symkind"
+	"github.com/eihigh/goloader/stackobject"
 )
 
 // ourself defined struct
@@ -1332,4 +1332,9 @@ func (cm *CodeModule) DataAddr() (start, end uintptr) {
 		return 0, 0
 	}
 	return cm.module.data, cm.module.enoptrbss
+}
+
+func CastToFuncUnsafe[T any](addr uintptr) T {
+	pAddr := (uintptr)(unsafe.Pointer(&addr))
+	return *(*T)(unsafe.Pointer(&pAddr))
 }

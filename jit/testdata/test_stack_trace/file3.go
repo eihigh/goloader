@@ -1,7 +1,7 @@
 package test_stack_trace
 
 import (
-	"github.com/eh-steve/goloader/jit/testdata/common"
+	"github.com/eihigh/goloader/jit/testdata/common"
 )
 
 //go:noinline

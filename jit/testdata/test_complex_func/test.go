@@ -3,7 +3,7 @@ package test_complex_func
 import (
 	"context"
 	"fmt"
-	"github.com/eh-steve/goloader/jit/testdata/common"
+	"github.com/eihigh/goloader/jit/testdata/common"
 	"net"
 	"time"
 )

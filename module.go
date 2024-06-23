@@ -10,7 +10,7 @@ var firstmoduledata moduledata
 //go:linkname pinnedTypemaps runtime.pinnedTypemaps
 var pinnedTypemaps []unsafe.Pointer
 
-// Avoids "go:info.runtime.pinnedTypemaps: relocation target go:info.[]map[github.com/eh-steve/goloader.typeOff]*github.com/eh-steve/goloader._type not defined"
+// Avoids "go:info.runtime.pinnedTypemaps: relocation target go:info.[]map[github.com/eihigh/goloader.typeOff]*github.com/eihigh/goloader._type not defined"
 var pinnedTypemapsTyped = (*[]map[typeOff]*_type)(unsafe.Pointer(&pinnedTypemaps))
 
 // findfunctab is an array of these structures.

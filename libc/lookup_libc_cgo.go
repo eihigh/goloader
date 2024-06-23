@@ -4,7 +4,7 @@
 package libc
 
 import (
-	"github.com/eh-steve/goloader/libc/libc_cgo"
+	"github.com/eihigh/goloader/libc/libc_cgo"
 )
 
 func LookupDynamicSymbol(symName string) (uintptr, error) {

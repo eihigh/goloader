@@ -4,8 +4,8 @@
 package mmap
 
 import (
-	"github.com/eh-steve/goloader/mmap/mapping"
-	"github.com/eh-steve/goloader/mmap/vmmap"
+	"github.com/eihigh/goloader/mmap/mapping"
+	"github.com/eihigh/goloader/mmap/vmmap"
 )
 
 // https://developer.apple.com/library/archive/documentation/Performance/Conceptual/ManagingMemory/Articles/VMPages.html

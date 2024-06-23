@@ -6,7 +6,7 @@ package mmap
 import (
 	"bytes"
 	"fmt"
-	"github.com/eh-steve/goloader/mmap/mapping"
+	"github.com/eihigh/goloader/mmap/mapping"
 	"os"
 	"strconv"
 	"strings"
