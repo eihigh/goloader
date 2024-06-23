@@ -436,8 +436,9 @@ func (pkg *Pkg) addSym(r *goobj.Reader, idx uint32, refNames *map[goobj.SymRef]s
 			// Relocsにいろいろ格納されてそうなのでそれを見る
 			relocs := r.Relocs(index)
 			for _, reloc := range relocs {
-				name, pkgPath, index := resolveSymRef(reloc.Sym(), r, refNames, pkgPath)
-				fmt.Printf("sym %s, name: %s, pkgPath: %s, index: %d\n", symbol.Name, name, pkgPath, index)
+				_ = reloc
+				// name, pkgPath, index := resolveSymRef(reloc.Sym(), r, refNames, pkgPath)
+				// fmt.Printf("sym %s, name: %s, pkgPath: %s, index: %d\n", symbol.Name, name, pkgPath, index)
 			}
 			// 取れたけどここからどうするか
 			// AuxGotype と同じように処理する？

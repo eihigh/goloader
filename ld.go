@@ -1253,6 +1253,8 @@ func Load(linker *Linker, symPtr map[string]uintptr) (codeModule *CodeModule, er
 	if err != nil {
 		return nil, err
 	}
+	// print address of codeByte[0]
+	fmt.Printf("codeByte: %p to %x\n", &codeByte[0], (uintptr)(unsafe.Pointer(&codeByte[0]))+uintptr(codeModule.maxCodeLength))
 	dataByte, err := MmapData(codeModule.maxDataLength)
 	if err != nil {
 		return nil, err
