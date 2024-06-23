@@ -3,8 +3,8 @@ package goloader
 import (
 	"unsafe"
 
-	"github.com/eh-steve/goloader/obj"
-	"github.com/eh-steve/goloader/objabi/dataindex"
+	"github.com/eihigh/goloader/obj"
+	"github.com/eihigh/goloader/objabi/dataindex"
 )
 
 func (linker *Linker) addInlineTree(_f *_func, symbol *obj.ObjSymbol) (err error) {

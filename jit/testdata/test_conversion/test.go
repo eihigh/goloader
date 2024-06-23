@@ -3,7 +3,7 @@ package test_conversion
 import (
 	"bytes"
 	"fmt"
-	"github.com/eh-steve/goloader/jit/testdata/common"
+	"github.com/eihigh/goloader/jit/testdata/common"
 	"io"
 	"os"
 )

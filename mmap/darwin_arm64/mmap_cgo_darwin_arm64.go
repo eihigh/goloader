@@ -3,7 +3,7 @@
 
 package darwin_arm64
 
-import "github.com/eh-steve/goloader/mmap/darwin_arm64/darwin_arm64_cgo"
+import "github.com/eihigh/goloader/mmap/darwin_arm64/darwin_arm64_cgo"
 
 func MakeThreadJITCodeExecutable(ptr uintptr, len int) {
 	darwin_arm64_cgo.MakeThreadJITCodeExecutable(ptr, len)

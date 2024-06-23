@@ -2,7 +2,7 @@ package mmap
 
 import (
 	"fmt"
-	"github.com/eh-steve/goloader/mmap/mapping"
+	"github.com/eihigh/goloader/mmap/mapping"
 	"sort"
 	"syscall"
 	"unsafe"

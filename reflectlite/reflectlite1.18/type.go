@@ -16,7 +16,7 @@
 package reflectlite
 
 import (
-	"github.com/eh-steve/goloader/reflectlite/internal/unsafeheader"
+	"github.com/eihigh/goloader/reflectlite/internal/unsafeheader"
 	"strconv"
 	"sync"
 	"unsafe"

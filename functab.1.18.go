@@ -6,7 +6,7 @@ package goloader
 import (
 	"unsafe"
 
-	"github.com/eh-steve/goloader/obj"
+	"github.com/eihigh/goloader/obj"
 )
 
 type functab struct {

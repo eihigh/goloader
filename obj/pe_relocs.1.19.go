@@ -9,7 +9,7 @@ import (
 	"debug/pe"
 	"encoding/binary"
 	"fmt"
-	"github.com/eh-steve/goloader/objabi/symkind"
+	"github.com/eihigh/goloader/objabi/symkind"
 	"sort"
 	"strings"
 )

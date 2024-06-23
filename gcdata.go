@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/eh-steve/goloader/obj"
-	"github.com/eh-steve/goloader/objabi/symkind"
+	"github.com/eihigh/goloader/obj"
+	"github.com/eihigh/goloader/objabi/symkind"
 )
 
 const (

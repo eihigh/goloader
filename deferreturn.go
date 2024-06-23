@@ -7,7 +7,7 @@ import (
 	"cmd/objfile/sys"
 	"fmt"
 
-	"github.com/eh-steve/goloader/objabi/dataindex"
+	"github.com/eihigh/goloader/objabi/dataindex"
 )
 
 func (linker *Linker) addDeferReturn(_func *_func) (err error) {

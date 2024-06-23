@@ -3,7 +3,7 @@ package test_issue78
 import (
 	"context"
 	"fmt"
-	"github.com/eh-steve/goloader/jit/testdata/common"
+	"github.com/eihigh/goloader/jit/testdata/common"
 	"unsafe"
 )
 

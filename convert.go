@@ -5,8 +5,8 @@ package goloader
 
 import (
 	"fmt"
-	"github.com/eh-steve/goloader/goversion"
-	"github.com/eh-steve/goloader/mprotect"
+	"github.com/eihigh/goloader/goversion"
+	"github.com/eihigh/goloader/mprotect"
 	"log"
 	"reflect"
 	"regexp"

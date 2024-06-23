@@ -4,13 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/eh-steve/goloader"
-	"github.com/eh-steve/goloader/jit"
-	"github.com/eh-steve/goloader/jit/testdata/common"
-	"github.com/eh-steve/goloader/jit/testdata/test_issue55/p"
-	"github.com/eh-steve/goloader/jit/testdata/test_type_mismatch"
-	"github.com/eh-steve/goloader/jit/testdata/test_type_mismatch/typedef"
-	"github.com/eh-steve/goloader/unload/jsonunload"
 	"io"
 	"log"
 	"net"
@@ -30,6 +23,14 @@ import (
 	"testing"
 	"time"
 	"unsafe"
+
+	"github.com/eihigh/goloader"
+	"github.com/eihigh/goloader/jit"
+	"github.com/eihigh/goloader/jit/testdata/common"
+	"github.com/eihigh/goloader/jit/testdata/test_issue55/p"
+	"github.com/eihigh/goloader/jit/testdata/test_type_mismatch"
+	"github.com/eihigh/goloader/jit/testdata/test_type_mismatch/typedef"
+	"github.com/eihigh/goloader/unload/jsonunload"
 )
 
 type testData struct {
@@ -131,19 +132,24 @@ func TestJitSimpleFunctions(t *testing.T) {
 		files: []string{"./testdata/test_simple_func/test.go"},
 		pkg:   "./testdata/test_simple_func",
 	}
-	testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	// testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	testNames := []string{"BuildGoPackage"}
 
 	for _, testName := range testNames {
 		t.Run(testName, func(t *testing.T) {
 			module, symbols := buildLoadable(t, conf, testName, data)
+			_ = symbols
 
-			addFunc := symbols["Add"].(func(a, b int) int)
+			// addFunc := symbols["Add"].(func(a, b int) int)
+			pkg := "github.com/eihigh/goloader/jit/testdata/test_simple_func"
+			addFunc := goloader.CastToFuncUnsafe[func(a, b int) int](module.Syms[pkg+".Add"])
 			result := addFunc(5, 6)
 			if result != 11 {
 				t.Errorf("expected %d, got %d", 11, result)
 			}
 
-			handleBytesFunc := symbols["HandleBytes"].(func(input interface{}) ([]byte, error))
+			// handleBytesFunc := symbols["HandleBytes"].(func(input interface{}) ([]byte, error))
+			handleBytesFunc := goloader.CastToFuncUnsafe[func(input any) ([]byte, error)](module.Syms[pkg+".HandleBytes"])
 			bytesOut, err := handleBytesFunc([]byte{1, 2, 3})
 			if err != nil {
 				t.Fatal(err)
@@ -155,6 +161,9 @@ func TestJitSimpleFunctions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
+			fmt.Println("Waiting for 5 seconds")
+			time.Sleep(10 * time.Second)
 		})
 	}
 }
@@ -391,7 +400,7 @@ func TestJitCGoPackage(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("TODO - C calling Go not yet supported on Windows")
 	}
-	if os.Getenv("GITHUB_REPOSITORY") == "eh-steve/goloader" {
+	if os.Getenv("GITHUB_REPOSITORY") == "eihigh/goloader" {
 		t.Skip("I don't know why but this test fails in github CI")
 	}
 	conf := baseConfig

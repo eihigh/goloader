@@ -3,3 +3,5 @@
 
 #vscode file
 .vscode/*
+
+*.test

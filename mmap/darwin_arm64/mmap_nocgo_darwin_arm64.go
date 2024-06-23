@@ -20,7 +20,7 @@ func sys_icache_invalidate_trampoline()
 
 //go:cgo_import_dynamic libkern_sys_icache_invalidate sys_icache_invalidate "/usr/lib/libSystem.B.dylib"
 
-//go:linkname FuncPCsABI0 github.com/eh-steve/goloader.FuncPCsABI0
+//go:linkname FuncPCsABI0 github.com/eihigh/goloader.FuncPCsABI0
 func FuncPCsABI0(abiInternalPCs []uintptr) []uintptr
 
 var jitWriteProtectABI0 uintptr

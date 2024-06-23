@@ -5,8 +5,8 @@ package libc
 
 import (
 	"fmt"
-	"github.com/eh-steve/goloader"
-	"github.com/eh-steve/goloader/goversion"
+	"github.com/eihigh/goloader"
+	"github.com/eihigh/goloader/goversion"
 	"reflect"
 	"runtime"
 	"syscall"

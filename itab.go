@@ -2,7 +2,7 @@ package goloader
 
 import (
 	"fmt"
-	"github.com/eh-steve/goloader/mprotect"
+	"github.com/eihigh/goloader/mprotect"
 	"runtime"
 	"sort"
 	"unsafe"
