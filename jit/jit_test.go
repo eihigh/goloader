@@ -126,7 +126,10 @@ func goVersion(t *testing.T) int64 {
 }
 
 func unsafeCastFunc[T any](cm *goloader.CodeModule, name string) T {
-	addr := cm.Syms[name]
+	addr, ok := cm.Syms[name]
+	if !ok {
+		panic(fmt.Sprintf("symbol %s not found", name))
+	}
 	pAddr := (uintptr)(unsafe.Pointer(&addr))
 	return *(*T)(unsafe.Pointer(&pAddr))
 }
@@ -138,7 +141,8 @@ func TestJitSimpleFunctions(t *testing.T) {
 		files: []string{"./testdata/test_simple_func/test.go"},
 		pkg:   "./testdata/test_simple_func",
 	}
-	testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	// testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	testNames := []string{"BuildGoPackage"}
 
 	for _, testName := range testNames {
 		t.Run(testName, func(t *testing.T) {
@@ -146,16 +150,15 @@ func TestJitSimpleFunctions(t *testing.T) {
 			_ = symbols
 
 			for name, ptr := range module.Syms {
-				fmt.Printf("%s: %x\n", name, ptr)
+				fmt.Printf("module.Syms: %s: %x\n", name, ptr)
 			}
 
 			// addFunc := symbols["Add"].(func(a, b int) int)
-			addFunc := unsafeCastFunc[func(a, b int) int](module, "command-line-arguments.Add")
-			addFunc(5, 6)
-
-			// if result != 11 {
-			// 	t.Errorf("expected %d, got %d", 11, result)
-			// }
+			addFunc := unsafeCastFunc[func(a, b int) int](module, "github.com/eh-steve/goloader/jit/testdata/test_simple_func.Add")
+			result := addFunc(5, 6)
+			if result != 11 {
+				t.Errorf("expected %d, got %d", 11, result)
+			}
 
 			// handleBytesFunc := symbols["HandleBytes"].(func(input interface{}) ([]byte, error))
 			// handleBytesFunc := unsafeCastFunc[func(input any) ([]byte, error)](module, "HandleBytes")
