@@ -25,7 +25,7 @@ const flagSnippet = `
 	ExportTypes        bool         "help:\"emit GoAuxTypes for package exports\""`
 
 const objSnippet = `	if base.Flag.ExportTypes {
-		for _, export := range typecheck.Target.Exports {
+		for _, export := range typecheck.Target.PluginExports {
 			s := export.Linksym()
 
 			if strings.HasSuffix(s.Name, "..inittask") && s.OnList() {

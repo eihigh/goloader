@@ -5,8 +5,6 @@ package goloader
 
 import (
 	"fmt"
-	"github.com/eh-steve/goloader/goversion"
-	"github.com/eh-steve/goloader/mprotect"
 	"log"
 	"reflect"
 	"regexp"
@@ -14,6 +12,9 @@ import (
 	"runtime/debug"
 	"strings"
 	"unsafe"
+
+	"github.com/eh-steve/goloader/goversion"
+	"github.com/eh-steve/goloader/mprotect"
 )
 
 func CanAttemptConversion(oldValue interface{}, newType reflect.Type) bool {

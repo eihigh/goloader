@@ -582,38 +582,39 @@ func (linker *Linker) readFuncData(symbol *obj.ObjSymbol, codeLen int) (err erro
 	return
 }
 
-func (linker *Linker) addSymbolMap(symPtr map[string]uintptr, codeModule *CodeModule) (symbolMap map[string]uintptr, err error) {
-	symbolMap = make(map[string]uintptr)
+func (linker *Linker) addSymbolMap(knownSymAddrs map[string]uintptr, codeModule *CodeModule) (symAddrs map[string]uintptr, err error) {
+	symAddrs = make(map[string]uintptr)
 	segment := &codeModule.segment
 	for name, sym := range linker.symMap {
 		if !linker.isSymbolReachable(name) {
 			continue
 		}
 		if sym.Offset == InvalidOffset {
-			if ptr, ok := symPtr[sym.Name]; ok {
-				symbolMap[name] = ptr
+			if ptr, ok := knownSymAddrs[sym.Name]; ok {
+				symAddrs[name] = ptr
 				// Mark the symbol as a duplicate
-				symbolMap[FirstModulePrefix+name] = ptr
+				symAddrs[FirstModulePrefix+name] = ptr
 			} else {
-				symbolMap[name] = InvalidHandleValue
+				symAddrs[name] = InvalidHandleValue
 				return nil, fmt.Errorf("unresolved external symbol: %s", sym.Name)
 			}
 		} else if sym.Name == TLSNAME {
 			// nothing todo
 		} else if sym.Kind == symkind.STEXT {
-			symbolMap[name] = uintptr(linker.symMap[name].Offset + segment.codeBase)
-			codeModule.Syms[sym.Name] = symbolMap[name]
-			if _, ok := symPtr[name]; ok {
+			symAddrs[name] = uintptr(linker.symMap[name].Offset + segment.codeBase)
+			// fmt.Printf("name: %s, offset: %d, codeBase: %d, addr: %x\n", name, sym.Offset, segment.codeBase, symAddrs[name])
+			codeModule.Syms[sym.Name] = symAddrs[name]
+			if _, ok := knownSymAddrs[name]; ok {
 				// Mark the symbol as a duplicate, and store the original entrypoint
-				symbolMap[FirstModulePrefix+name] = symPtr[name]
+				symAddrs[FirstModulePrefix+name] = knownSymAddrs[name]
 			}
 		} else if strings.HasPrefix(sym.Name, ItabPrefix) {
-			if ptr, ok := symPtr[sym.Name]; ok {
-				symbolMap[name] = ptr
-				symbolMap[FirstModulePrefix+name] = ptr
+			if ptr, ok := knownSymAddrs[sym.Name]; ok {
+				symAddrs[name] = ptr
+				symAddrs[FirstModulePrefix+name] = ptr
 			}
 		} else {
-			if _, ok := symPtr[name]; !ok {
+			if _, ok := knownSymAddrs[name]; !ok {
 				if strings.HasPrefix(name, TypeStringPrefix) {
 					strPtr := linker.heapStringMap[name]
 					if strPtr == nil {
@@ -621,27 +622,27 @@ func (linker *Linker) addSymbolMap(symPtr map[string]uintptr, codeModule *CodeMo
 					}
 					if len(*strPtr) == 0 {
 						// Any address will do, the length is 0, so it should never be read
-						symbolMap[name] = uintptr(unsafe.Pointer(linker))
+						symAddrs[name] = uintptr(unsafe.Pointer(linker))
 					} else {
 						x := (*reflect.StringHeader)(unsafe.Pointer(strPtr))
-						symbolMap[name] = x.Data
+						symAddrs[name] = x.Data
 					}
 				} else {
-					symbolMap[name] = uintptr(linker.symMap[name].Offset + segment.dataBase)
+					symAddrs[name] = uintptr(linker.symMap[name].Offset + segment.dataBase)
 					if strings.HasSuffix(sym.Name, "·f") {
-						codeModule.Syms[sym.Name] = symbolMap[name]
+						codeModule.Syms[sym.Name] = symAddrs[name]
 					}
 					if strings.HasPrefix(name, TypePrefix) {
-						if variant, ok := symbolIsVariant(name); ok && symPtr[variant] != 0 {
-							symbolMap[FirstModulePrefix+name] = symPtr[variant]
+						if variant, ok := symbolIsVariant(name); ok && knownSymAddrs[variant] != 0 {
+							symAddrs[FirstModulePrefix+name] = knownSymAddrs[variant]
 						}
 					}
 				}
 			} else {
 				if strings.HasPrefix(name, MainPkgPrefix) || strings.HasPrefix(name, TypePrefix) {
-					symbolMap[name] = uintptr(linker.symMap[name].Offset + segment.dataBase)
+					symAddrs[name] = uintptr(linker.symMap[name].Offset + segment.dataBase)
 					// Record the presence of a duplicate symbol by adding a prefix
-					symbolMap[FirstModulePrefix+name] = symPtr[name]
+					symAddrs[FirstModulePrefix+name] = knownSymAddrs[name]
 				} else {
 					shouldSkipDedup := false
 					for _, pkgPath := range linker.options.SkipTypeDeduplicationForPackages {
@@ -651,21 +652,21 @@ func (linker *Linker) addSymbolMap(symPtr map[string]uintptr, codeModule *CodeMo
 					}
 					if shouldSkipDedup {
 						// Use the new version of the symbol
-						symbolMap[name] = uintptr(linker.symMap[name].Offset + segment.dataBase)
+						symAddrs[name] = uintptr(linker.symMap[name].Offset + segment.dataBase)
 					} else {
-						symbolMap[name] = symPtr[name]
+						symAddrs[name] = knownSymAddrs[name]
 						// Mark the symbol as a duplicate
-						symbolMap[FirstModulePrefix+name] = symPtr[name]
+						symAddrs[FirstModulePrefix+name] = knownSymAddrs[name]
 					}
 				}
 			}
 		}
 	}
-	if tlsG, ok := symPtr[TLSNAME]; ok {
-		symbolMap[TLSNAME] = tlsG
+	if tlsG, ok := knownSymAddrs[TLSNAME]; ok {
+		symAddrs[TLSNAME] = tlsG
 	}
 	codeModule.heapStrings = linker.heapStringMap
-	return symbolMap, err
+	return symAddrs, err
 }
 
 func (linker *Linker) addFuncTab(module *moduledata, _func *_func, symbolMap map[string]uintptr) (err error) {

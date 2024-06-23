@@ -125,6 +125,12 @@ func goVersion(t *testing.T) int64 {
 	return version
 }
 
+func unsafeCastFunc[T any](cm *goloader.CodeModule, name string) T {
+	sym := cm.Syms[name]
+	p := (uintptr)(unsafe.Pointer(&sym))
+	return *(*T)(unsafe.Pointer(&p))
+}
+
 func TestJitSimpleFunctions(t *testing.T) {
 	conf := baseConfig
 
@@ -137,14 +143,20 @@ func TestJitSimpleFunctions(t *testing.T) {
 	for _, testName := range testNames {
 		t.Run(testName, func(t *testing.T) {
 			module, symbols := buildLoadable(t, conf, testName, data)
+			_ = symbols
 
-			addFunc := symbols["Add"].(func(a, b int) int)
+			// addFunc := symbols["Add"].(func(a, b int) int)
+			// addFunc := unsafeCastFunc[func(a, b int) int](module, "Add")
+			addr := module.Syms["Add"]
+			pAddr := (uintptr)(unsafe.Pointer(&addr))
+			addFunc := *(*func(a, b int) int)(unsafe.Pointer(&pAddr))
 			result := addFunc(5, 6)
 			if result != 11 {
 				t.Errorf("expected %d, got %d", 11, result)
 			}
 
-			handleBytesFunc := symbols["HandleBytes"].(func(input interface{}) ([]byte, error))
+			// handleBytesFunc := symbols["HandleBytes"].(func(input interface{}) ([]byte, error))
+			handleBytesFunc := unsafeCastFunc[func(input any) ([]byte, error)](module, "HandleBytes")
 			bytesOut, err := handleBytesFunc([]byte{1, 2, 3})
 			if err != nil {
 				t.Fatal(err)

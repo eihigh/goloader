@@ -16,12 +16,13 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/eh-steve/goloader/objabi/reloctype"
-	"github.com/eh-steve/goloader/objabi/symkind"
 	"go/token"
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/eh-steve/goloader/objabi/reloctype"
+	"github.com/eh-steve/goloader/objabi/symkind"
 )
 
 func (pkg *Pkg) Symbols() error {
@@ -116,6 +117,54 @@ func (pkg *Pkg) Symbols() error {
 			pkg.SymNameOrder[i] = strings.Replace(symName, EmptyPkgPath, pkg.PkgPath, -1)
 		}
 	}
+
+	// DWARF info から型情報を抜き出すテスト
+	// NOTE: debug/elf 等は go object file に対応してないので elf.Open 等は使えない
+	// internal なパッケージの dwarf 向け機能を使う
+	// var data *dwarf.Data
+	// // nr := io.NewSectionReader(pkg.F, 0, 0)
+	// elfFile, err := elf.Open(pkg.F.Name())
+	// if err != nil {
+	// 	// _, _ = nr.Seek(0, 0)
+	// 	machoFile, errMacho := macho.Open(pkg.F.Name())
+	// 	if errMacho != nil {
+	// 		// _, _ = nr.Seek(0, 0)
+	// 		peFile, errPE := pe.Open(pkg.F.Name())
+	// 		if errPE != nil {
+	// 			return fmt.Errorf("only elf, macho and PE relocations currently supported, failed to open as either: (%s): %w", err, errPE)
+	// 		} else {
+	// 			data, err = peFile.DWARF()
+	// 			if err != nil {
+	// 				return fmt.Errorf("failed to extract DWARF info from pe file: %w", err)
+	// 			}
+	// 		}
+	// 	} else {
+	// 		data, err = machoFile.DWARF()
+	// 		if err != nil {
+	// 			return fmt.Errorf("failed to extract DWARF info from macho file: %w", err)
+	// 		}
+	//
+	// 	}
+	// } else {
+	// 	data, err = elfFile.DWARF()
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to extract DWARF info from elf file: %w", err)
+	// 	}
+	// }
+	// r := data.Reader()
+	// for {
+	// 	entry, err := r.Next()
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to read dwarf entry: %w", err)
+	// 	}
+	// 	if entry == nil {
+	// 		break
+	// 	}
+	// 	for _, f := range entry.Field {
+	// 		fmt.Printf("tag %s: %+v\n", entry.Tag, f)
+	// 	}
+	// }
+
 	return nil
 }
 
@@ -321,9 +370,11 @@ func (pkg *Pkg) addSym(r *goobj.Reader, idx uint32, refNames *map[goobj.SymRef]s
 		auxSymRef := auxs[k].Sym()
 		parentPkgPath := pkgPath
 		name, pkgPath, index := resolveSymRef(auxSymRef, r, refNames, pkgPath)
+		// fmt.Println("symbol name:", symbol.Name, "name:", name, "pkgPath:", pkgPath)
 
 		switch auxs[k].Type() {
 		case goobj.AuxGotype:
+			fmt.Println("AuxGotype, symbol name:", symbol.Name, "name:", name, "pkgPath:", pkgPath)
 			if name == "" {
 				// Likely this type is defined in another package not yet loaded, so mark it as unresolved and resolve it later, after all packages
 				symbol.Type = UnresolvedIdxString(auxSymRef)
@@ -371,6 +422,26 @@ func (pkg *Pkg) addSym(r *goobj.Reader, idx uint32, refNames *map[goobj.SymRef]s
 		case goobj.AuxFuncdata:
 			symbol.Func.FuncData = append(symbol.Func.FuncData, name)
 		case goobj.AuxDwarfInfo:
+			// cmd/objfile/obj/objfile.go を参考に
+			// w.aux1(goobj.AuxDwarfInfo, fn.dwarfLocSym) してるのがそれ
+			// 書き込むbytes = typ uint8 + makeSymRef(fn.dwarfLocSym)
+			// makeSymRef = (*LSym) => goobj.SymRef{PkgIdx: uint32(s.PkgIdx), SymIdx: uint32(s.SymIdx)}
+			// s.PkgIdx, s.SymIdx (index) は resolveSymRef で解決されてるやつ
+			// makeSymRef は、makeというけど、実際には LSym から２つのフィールドを抜き出す処理
+			// Gotype も dwarf と同じように LSym なので参考にできる
+			// r.Sym(index) で取ってこれそう？
+			// Sym自体はbyte sliceで、Nameは resolveSymRef で既に name として取っている
+			// それが空文字列なので詰みか
+			// いや、goobj.Symを取れてobj.LSymが取れないのが不思議
+			// Relocsにいろいろ格納されてそうなのでそれを見る
+			relocs := r.Relocs(index)
+			for _, reloc := range relocs {
+				name, pkgPath, index := resolveSymRef(reloc.Sym(), r, refNames, pkgPath)
+				fmt.Printf("sym %s, name: %s, pkgPath: %s, index: %d\n", symbol.Name, name, pkgPath, index)
+			}
+			// 取れたけどここからどうするか
+			// AuxGotype と同じように処理する？
+
 		case goobj.AuxDwarfLoc:
 		case goobj.AuxDwarfRanges:
 		case goobj.AuxDwarfLines:
