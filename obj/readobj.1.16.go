@@ -16,12 +16,13 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/eihigh/goloader/objabi/reloctype"
-	"github.com/eihigh/goloader/objabi/symkind"
 	"go/token"
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/eihigh/goloader/objabi/reloctype"
+	"github.com/eihigh/goloader/objabi/symkind"
 )
 
 func (pkg *Pkg) Symbols() error {

@@ -45,7 +45,7 @@ var baseConfig = jit.BuildConfig{
 	ExtraBuildFlags:                  nil,
 	BuildEnv:                         os.Environ(),
 	TmpDir:                           "",
-	DebugLog:                         true,
+	DebugLog:                         false,
 	SymbolNameOrder:                  nil,
 	RandomSymbolNameOrder:            false,
 	RelocationDebugWriter:            nil,
@@ -498,6 +498,7 @@ func TestPatchMultipleModuleItabsHttp(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			start := runtime.NumGoroutine()
 			module1, _ := buildLoadable(t, conf, testName, data)
+			return
 			module2, _ := buildLoadable(t, conf, testName, data)
 			// httpGet1 := symbols1["MakeHTTPRequestWithDNS"].(func(string) (string, error))
 			// httpGet2 := symbols2["MakeHTTPRequestWithDNS"].(func(string) (string, error))

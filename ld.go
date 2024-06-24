@@ -777,14 +777,41 @@ func (linker *Linker) patchPCValuesForReloc(pcvalues *[]byte, relocOffet int, ep
 	// Table is (value, PC), (value, PC), (value, PC)... etc
 	// Each value is delta encoded (signed) relative to the last, and each PC is delta encoded (unsigned)
 
-	pcs, vals := readPCData(p, 0)
-	lastValue := vals[len(vals)-1]
-	lastPC := pcs[len(pcs)-1]
+	// pcs, vals := readPCData(p, 0)
+	// lastValue := vals[len(vals)-1]
+	// lastPC := pcs[len(pcs)-1]
+	lastValue := int32(-1)
+	lastPC := uintptr(0)
+	beforeLastPC := uintptr(0)
+	length := 0
+	{
+		stepp := p
+		pc := lastPC
+		val := lastValue
+		for {
+			pc = lastPC
+			val = lastValue
+			var ok bool
+			stepp, ok = step(stepp, &pc, &val, pc == 0)
+			if !ok {
+				break
+			}
+			beforeLastPC = lastPC
+			lastPC = pc
+			lastValue = val
+			length++
+			if len(stepp) == 0 {
+				break
+			}
+		}
+	}
+
 	if lastValue == valAtRelocSite {
 		// Extend the lastPC delta to absorb our epilogue, keep the value the same
 		var pcDelta uintptr
-		if len(pcs) > 1 {
-			pcDelta = (lastPC - pcs[len(pcs)-2]) / pcQuantum
+		if length > 1 {
+			// pcDelta = (lastPC - pcs[len(pcs)-2]) / pcQuantum
+			pcDelta = (lastPC - beforeLastPC) / pcQuantum
 		} else {
 			pcDelta = lastPC / pcQuantum
 		}
@@ -794,11 +821,12 @@ func (linker *Linker) patchPCValuesForReloc(pcvalues *[]byte, relocOffet int, ep
 		buf = buf[:n]
 		index := bytes.LastIndex(p, buf)
 		if index == -1 {
-			panic(fmt.Sprintf("could not find varint PC delta of %d (%v)", pcDelta, buf))
+			panic(fmt.Sprintf("could not find varint PC delta of %d (%v)", pcDelta, p))
 		}
 		p = p[:index]
-		if len(pcs) > 1 {
-			pcDelta = (uintptr(epilogueOffset+epilogueSize) - pcs[len(pcs)-2]) / pcQuantum
+		if length > 1 {
+			// pcDelta = (uintptr(epilogueOffset+epilogueSize) - pcs[len(pcs)-2]) / pcQuantum
+			pcDelta = (uintptr(epilogueOffset+epilogueSize) - beforeLastPC) / pcQuantum
 		} else {
 			pcDelta = (uintptr(epilogueOffset + epilogueSize)) / pcQuantum
 		}
@@ -1235,7 +1263,7 @@ func (linker *Linker) UnloadStrings() {
 	linker.heapStringMap = nil
 }
 
-func Load(linker *Linker, symPtr map[string]uintptr) (codeModule *CodeModule, err error) {
+func Load(linker *Linker, globalSymPtr map[string]uintptr) (codeModule *CodeModule, err error) {
 	codeModule = &CodeModule{
 		Syms:   make(map[string]uintptr),
 		module: &moduledata{typemap: make(map[typeOff]*_type)},
@@ -1274,7 +1302,7 @@ func Load(linker *Linker, symPtr map[string]uintptr) (codeModule *CodeModule, er
 	codeModule.dataOff += codeModule.noptrbssLen
 
 	var symbolMap map[string]uintptr
-	if symbolMap, err = linker.addSymbolMap(symPtr, codeModule); err == nil {
+	if symbolMap, err = linker.addSymbolMap(globalSymPtr, codeModule); err == nil {
 		if err = linker.relocate(codeModule, symbolMap); err == nil {
 			if err = linker.buildModule(codeModule, symbolMap); err == nil {
 				if err = linker.deduplicateTypeDescriptors(codeModule, symbolMap); err == nil {
