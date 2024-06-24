@@ -107,7 +107,9 @@ func buildLoadable(t *testing.T, conf jit.BuildConfig, testName string, data tes
 		_, _ = f.Write(symOrderJSON)
 		_ = f.Close()
 	}
+	log.Print("loading...")
 	module, err = loadable.Load()
+	log.Print("loaded")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -482,6 +484,8 @@ func TestJitHttpGet(t *testing.T) {
 
 func TestPatchMultipleModuleItabsHttp(t *testing.T) {
 	conf := baseConfig
+	// Print log with milliseconds
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	data := testData{
 		files: []string{"./testdata/test_http_get/test.go"},

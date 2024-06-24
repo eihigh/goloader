@@ -194,13 +194,15 @@ func resolveDependencies(config BuildConfig, workDir, buildDir string, outputFil
 	bufStdout := &bytes.Buffer{}
 	bufStdErr := &bytes.Buffer{}
 
-	if config.DebugLog {
-		cmd.Stdout = io.MultiWriter(os.Stdout, bufStdout)
-		cmd.Stderr = io.MultiWriter(os.Stderr, bufStdErr)
-	} else {
-		cmd.Stdout = bufStdout
-		cmd.Stderr = bufStdErr
-	}
+	// if config.DebugLog {
+	// 	cmd.Stdout = io.MultiWriter(os.Stdout, bufStdout)
+	// 	cmd.Stderr = io.MultiWriter(os.Stderr, bufStdErr)
+	// } else {
+	// 	cmd.Stdout = bufStdout
+	// 	cmd.Stderr = bufStdErr
+	// }
+	cmd.Stdout = bufStdout
+	cmd.Stderr = bufStdErr
 
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("could not run 'go build -n' to get importcfg: %w\nstderr:\n%s", err, bufStdErr.String())
@@ -212,6 +214,9 @@ func resolveDependencies(config BuildConfig, workDir, buildDir string, outputFil
 		pair, found := strings.CutPrefix(l, "packagefile ")
 		if found {
 			pkg, obj, found := strings.Cut(pair, "=")
+			if strings.HasSuffix(pkg, "/__tmp__") {
+				continue
+			}
 			if !found {
 				return nil, fmt.Errorf("could not parse packagefile line: %s", l)
 			}
@@ -370,6 +375,25 @@ func buildAndLoadDeps(config BuildConfig,
 	}
 	missingDeps := getMissingDeps(sortedDeps, unresolvedSymbols, unresolvedSymbolsWithoutSkip, seen, config.DebugLog)
 
+	// force missingDeps to refer to pkgobjs
+	// missingDeps = make(map[string]struct{})
+	// for pkg := range pkgobjs {
+	// 	// find pkg in sortedDeps. add pkg if not found
+	// 	found := false
+	// 	for _, dep := range sortedDeps {
+	// 		if dep == pkg {
+	// 			found = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if !found {
+	// 		missingDeps[pkg] = struct{}{}
+	// 	}
+	// }
+	for pkg := range pkgobjs {
+		missingDeps[pkg] = struct{}{}
+	}
+
 	if len(missingDeps) == 0 {
 		return nil
 	}
@@ -389,6 +413,7 @@ func buildAndLoadDeps(config BuildConfig,
 		if _, ok := seen[missingDep]; ok {
 			continue
 		}
+		seen[missingDep] = struct{}{}
 		h := sha256.New()
 		h.Write([]byte(missingDep))
 
@@ -453,10 +478,12 @@ func buildAndLoadDeps(config BuildConfig,
 		return fmt.Errorf("got %d during build of dependencies: %w%s", len(errs), errs[0], extra)
 	}
 
+	log.Print("reading objects...")
 	linker, err := goloader.ReadObjs(*buildPackageFilePaths, *builtPackageImportPaths, globalSymPtr, linkerOpts...)
 	if err != nil {
 		return fmt.Errorf("linker failed to read symbols from dependency object files (%s): %w", *builtPackageImportPaths, err)
 	}
+	log.Print("reading objects done")
 
 	globalMutex.Lock()
 	nextUnresolvedSymbols := linker.UnresolvedExternalSymbols(globalSymPtr, nil, stdLibPkgs, config.UnsafeBlindlyUseFirstmoduleTypes)
