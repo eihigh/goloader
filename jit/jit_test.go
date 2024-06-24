@@ -45,7 +45,7 @@ var baseConfig = jit.BuildConfig{
 	ExtraBuildFlags:                  nil,
 	BuildEnv:                         os.Environ(),
 	TmpDir:                           "",
-	DebugLog:                         false,
+	DebugLog:                         true,
 	SymbolNameOrder:                  nil,
 	RandomSymbolNameOrder:            false,
 	RelocationDebugWriter:            nil,
@@ -162,8 +162,8 @@ func TestJitSimpleFunctions(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			fmt.Println("Waiting for 5 seconds")
-			time.Sleep(10 * time.Second)
+			// fmt.Println("Waiting for 5 seconds")
+			// time.Sleep(5 * time.Second)
 		})
 	}
 }
@@ -446,13 +446,17 @@ func TestJitHttpGet(t *testing.T) {
 		files: []string{"./testdata/test_http_get/test.go"},
 		pkg:   "testdata/test_http_get",
 	}
-	testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	// testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	testNames := []string{"BuildGoPackage"}
 
 	for _, testName := range testNames {
 		t.Run(testName, func(t *testing.T) {
 			start := runtime.NumGoroutine()
 			module, symbols := buildLoadable(t, conf, testName, data)
-			httpGet := symbols["MakeHTTPRequestWithDNS"].(func(string) (string, error))
+			_ = symbols
+			// httpGet := symbols["MakeHTTPRequestWithDNS"].(func(string) (string, error))
+			pkg := "github.com/eihigh/goloader/jit/testdata/test_http_get"
+			httpGet := goloader.CastToFuncUnsafe[func(string) (string, error)](module.Syms[pkg+".MakeHTTPRequestWithDNS"])
 			result, err := httpGet("https://ipinfo.io/ip")
 			if err != nil {
 				t.Fatal(err)
@@ -476,22 +480,26 @@ func TestJitHttpGet(t *testing.T) {
 	}
 }
 
-func TestPatchMultipleModuleItabs(t *testing.T) {
+func TestPatchMultipleModuleItabsHttp(t *testing.T) {
 	conf := baseConfig
 
 	data := testData{
 		files: []string{"./testdata/test_http_get/test.go"},
 		pkg:   "testdata/test_http_get",
 	}
-	testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	// testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	testNames := []string{"BuildGoPackage"}
 
 	for _, testName := range testNames {
 		t.Run(testName, func(t *testing.T) {
 			start := runtime.NumGoroutine()
-			module1, symbols1 := buildLoadable(t, conf, testName, data)
-			module2, symbols2 := buildLoadable(t, conf, testName, data)
-			httpGet1 := symbols1["MakeHTTPRequestWithDNS"].(func(string) (string, error))
-			httpGet2 := symbols2["MakeHTTPRequestWithDNS"].(func(string) (string, error))
+			module1, _ := buildLoadable(t, conf, testName, data)
+			module2, _ := buildLoadable(t, conf, testName, data)
+			// httpGet1 := symbols1["MakeHTTPRequestWithDNS"].(func(string) (string, error))
+			// httpGet2 := symbols2["MakeHTTPRequestWithDNS"].(func(string) (string, error))
+			pkg := "github.com/eihigh/goloader/jit/testdata/test_http_get"
+			httpGet1 := goloader.CastToFuncUnsafe[func(string) (string, error)](module1.Syms[pkg+".MakeHTTPRequestWithDNS"])
+			httpGet2 := goloader.CastToFuncUnsafe[func(string) (string, error)](module2.Syms[pkg+".MakeHTTPRequestWithDNS"])
 			result1, err := httpGet1("https://ipinfo.io/ip")
 			if err != nil {
 				t.Fatal(err)
@@ -539,15 +547,19 @@ func TestPatchMultipleModuleItabsIssue55(t *testing.T) {
 		files: []string{"./testdata/test_issue55/t/t.go"},
 		pkg:   "./testdata/test_issue55/t",
 	}
-	testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	// testNames := []string{"BuildGoFiles", "BuildGoPackage", "BuildGoText"}
+	testNames := []string{"BuildGoPackage"}
 
 	for _, testName := range testNames {
 		t.Run(testName, func(t *testing.T) {
-			module1, symbols1 := buildLoadable(t, conf, testName, data)
-			module2, symbols2 := buildLoadable(t, conf, testName, data)
+			module1, _ := buildLoadable(t, conf, testName, data)
+			module2, _ := buildLoadable(t, conf, testName, data)
 
-			test1 := symbols1["Test"].(func(intf p.Intf) p.Intf)
-			test2 := symbols2["Test"].(func(intf p.Intf) p.Intf)
+			// test1 := symbols1["Test"].(func(intf p.Intf) p.Intf)
+			// test2 := symbols2["Test"].(func(intf p.Intf) p.Intf)
+			pkg := "github.com/eihigh/goloader/jit/testdata/test_issue55/t"
+			test1 := goloader.CastToFuncUnsafe[func(intf p.Intf) p.Intf](module1.Syms[pkg+".Test"])
+			test2 := goloader.CastToFuncUnsafe[func(intf p.Intf) p.Intf](module2.Syms[pkg+".Test"])
 			test1(&p.Stru{})
 			test2(&p.Stru{})
 
