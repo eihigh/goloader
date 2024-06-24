@@ -1,6 +1,7 @@
 package jit
 
 import (
+	"bufio"
 	"bytes"
 	"cmd/objfile/objabi"
 	"crypto/sha256"
@@ -174,6 +175,50 @@ func execBuild(config BuildConfig, workDir, outputFilePath string, targets []str
 }
 
 func resolveDependencies(config BuildConfig, workDir, buildDir string, outputFilePath, packageName string, pkg *Package, linkerOpts []goloader.LinkerOptFunc, stdLibPkgs map[string]struct{}) (*goloader.Linker, error) {
+	// Create a temporary directory under workDir, build it as a command depending
+	// on the target package, and collect all object files that depend on it.
+	if err := os.MkdirAll(filepath.Join(workDir, "__tmp__"), os.ModePerm); err != nil {
+		return nil, fmt.Errorf("could not create temporary directory: %w", err)
+	}
+	// TODO: defer remove dir
+	tmpMainContent := fmt.Sprintf("package main\nimport _ \"%s\"\nfunc main() {}\n", packageName)
+	if err := os.WriteFile(filepath.Join(workDir, "__tmp__", "main.go"), []byte(tmpMainContent), 0666); err != nil {
+		return nil, fmt.Errorf("could not write temporary main.go file: %w", err)
+	}
+	args := []string{"build", "-n"} // The build log (-n) will contain the list of dependencies as an importcfg
+	args = append(args, mergeBuildFlags(config.ExtraBuildFlags, config.Dynlink)...)
+	cmd := exec.Command(config.GoBinary, args...)
+	cmd.Dir = filepath.Join(workDir, "__tmp__")
+	cmd.Env = append(os.Environ(), config.BuildEnv...)
+
+	bufStdout := &bytes.Buffer{}
+	bufStdErr := &bytes.Buffer{}
+
+	if config.DebugLog {
+		cmd.Stdout = io.MultiWriter(os.Stdout, bufStdout)
+		cmd.Stderr = io.MultiWriter(os.Stderr, bufStdErr)
+	} else {
+		cmd.Stdout = bufStdout
+		cmd.Stderr = bufStdErr
+	}
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("could not run 'go build -n' to get importcfg: %w\nstderr:\n%s", err, bufStdErr.String())
+	}
+	pkgobjs := map[string]string{}
+	s := bufio.NewScanner(bytes.NewReader(bufStdErr.Bytes()))
+	for s.Scan() {
+		l := s.Text()
+		pair, found := strings.CutPrefix(l, "packagefile ")
+		if found {
+			pkg, obj, found := strings.Cut(pair, "=")
+			if !found {
+				return nil, fmt.Errorf("could not parse packagefile line: %s", l)
+			}
+			pkgobjs[pkg] = obj
+		}
+	}
+
 	// Now check whether all imported packages are available in the main binary, otherwise we need to build and load them too
 	linker, err := goloader.ReadObjs([]string{outputFilePath}, []string{packageName}, globalSymPtr, linkerOpts...)
 
@@ -205,7 +250,7 @@ func resolveDependencies(config BuildConfig, workDir, buildDir string, outputFil
 		if config.DebugLog {
 			log.Printf("%d unresolved external symbols missing from main binary, will attempt to build dependencies\n", len(externalSymbolsWithoutSkip))
 		}
-		errDeps := buildAndLoadDeps(config, workDir, buildDir, sortedDeps, externalSymbols, externalSymbolsWithoutSkip, seen, &depImportPaths, &depBinaries, 0, linkerOpts, stdLibPkgs)
+		errDeps := buildAndLoadDeps(config, workDir, buildDir, sortedDeps, externalSymbols, externalSymbolsWithoutSkip, seen, &depImportPaths, &depBinaries, 0, linkerOpts, stdLibPkgs, pkgobjs)
 		if errDeps != nil {
 			return nil, errDeps
 		}
@@ -317,7 +362,8 @@ func buildAndLoadDeps(config BuildConfig,
 	builtPackageImportPaths, buildPackageFilePaths *[]string,
 	depth int,
 	linkerOpts []goloader.LinkerOptFunc,
-	stdLibPkgs map[string]struct{}) error {
+	stdLibPkgs map[string]struct{},
+	pkgobjs map[string]string) error {
 	const maxRecursionDepth = 150
 	if depth > maxRecursionDepth {
 		return fmt.Errorf("failed to buildAndLoadDeps: recursion depth %d exceeded maximum of %d", depth, maxRecursionDepth)
@@ -327,10 +373,10 @@ func buildAndLoadDeps(config BuildConfig,
 	if len(missingDeps) == 0 {
 		return nil
 	}
-	wg := sync.WaitGroup{}
+	// wg := sync.WaitGroup{}
 	var errs []error
-	var errsMutex sync.Mutex
-	wg.Add(len(missingDeps))
+	// var errsMutex sync.Mutex
+	// wg.Add(len(missingDeps))
 
 	missingDepsSorted := make([]string, 0, len(missingDeps))
 	for k := range missingDeps {
@@ -338,7 +384,7 @@ func buildAndLoadDeps(config BuildConfig,
 	}
 	sort.Strings(missingDepsSorted)
 
-	concurrencyLimit := make(chan struct{}, runtime.GOMAXPROCS(0))
+	// concurrencyLimit := make(chan struct{}, runtime.GOMAXPROCS(0))
 	for _, missingDep := range missingDepsSorted {
 		if _, ok := seen[missingDep]; ok {
 			continue
@@ -346,45 +392,46 @@ func buildAndLoadDeps(config BuildConfig,
 		h := sha256.New()
 		h.Write([]byte(missingDep))
 
-		filename := filepath.Join(buildDir, hex.EncodeToString(h.Sum(nil))+"___pkg___.a")
+		// filename := filepath.Join(buildDir, hex.EncodeToString(h.Sum(nil))+"___pkg___.a")
+		filename := pkgobjs[missingDep]
 
-		concurrencyLimit <- struct{}{}
-		go func(filename, missingDep string) {
-			if config.DebugLog {
-				log.Printf("Building dependency '%s' (%s)\n", missingDep, filename)
-			}
-			if config.GoBinary == "" {
-				config.GoBinary = "go"
-			}
-
-			args := []string{"build"}
-			args = append(args, mergeBuildFlags(config.ExtraBuildFlags, config.Dynlink)...)
-			args = append(args, "-o", filename, missingDep)
-			command := exec.Command(config.GoBinary, args...)
-			if config.DebugLog {
-				command.Stderr = os.Stderr
-				command.Stderr = os.Stdout
-			}
-			command.Dir = workDir
-			bufStdout := &bytes.Buffer{}
-			bufStdErr := &bytes.Buffer{}
-			if config.DebugLog {
-				command.Stdout = io.MultiWriter(os.Stdout, bufStdout)
-				command.Stderr = io.MultiWriter(os.Stderr, bufStdErr)
-			} else {
-				command.Stdout = bufStdout
-				command.Stderr = bufStdErr
-			}
-
-			err := command.Run()
-			if err != nil {
-				errsMutex.Lock()
-				errs = append(errs, fmt.Errorf("failed to build dependency '%s': %w\nstdout:\n %s\nstderr:\n%s", missingDep, err, bufStdout.String(), bufStdErr.String()))
-				errsMutex.Unlock()
-			}
-			wg.Done()
-			<-concurrencyLimit
-		}(filename, missingDep)
+		// concurrencyLimit <- struct{}{}
+		// go func(filename, missingDep string) {
+		// 	if config.DebugLog {
+		// 		log.Printf("Building dependency '%s' (%s)\n", missingDep, filename)
+		// 	}
+		// 	if config.GoBinary == "" {
+		// 		config.GoBinary = "go"
+		// 	}
+		//
+		// 	args := []string{"build"}
+		// 	args = append(args, mergeBuildFlags(config.ExtraBuildFlags, config.Dynlink)...)
+		// 	args = append(args, "-o", filename, missingDep)
+		// 	command := exec.Command(config.GoBinary, args...)
+		// 	if config.DebugLog {
+		// 		command.Stderr = os.Stderr
+		// 		command.Stderr = os.Stdout
+		// 	}
+		// 	command.Dir = workDir
+		// 	bufStdout := &bytes.Buffer{}
+		// 	bufStdErr := &bytes.Buffer{}
+		// 	if config.DebugLog {
+		// 		command.Stdout = io.MultiWriter(os.Stdout, bufStdout)
+		// 		command.Stderr = io.MultiWriter(os.Stderr, bufStdErr)
+		// 	} else {
+		// 		command.Stdout = bufStdout
+		// 		command.Stderr = bufStdErr
+		// 	}
+		//
+		// 	err := command.Run()
+		// 	if err != nil {
+		// 		errsMutex.Lock()
+		// 		errs = append(errs, fmt.Errorf("failed to build dependency '%s': %w\nstdout:\n %s\nstderr:\n%s", missingDep, err, bufStdout.String(), bufStdErr.String()))
+		// 		errsMutex.Unlock()
+		// 	}
+		// 	wg.Done()
+		// 	<-concurrencyLimit
+		// }(filename, missingDep)
 		existingImport := false
 		for _, existing := range *builtPackageImportPaths {
 			if missingDep == existing {
@@ -397,7 +444,7 @@ func buildAndLoadDeps(config BuildConfig,
 			*buildPackageFilePaths = append([]string{filename}, *buildPackageFilePaths...)
 		}
 	}
-	wg.Wait()
+	// wg.Wait()
 	if len(errs) > 0 {
 		var extra string
 		if len(errs) > 1 {
@@ -443,7 +490,7 @@ func buildAndLoadDeps(config BuildConfig,
 			}
 			log.Printf("Still have %d unresolved symbols \n[\n  %s\n]\n after building dependencies. Recursing further to build: \n[\n  %s\n]\n", len(nextUnresolvedSymbols), strings.Join(missingSyms, ",\n  "), strings.Join(missingList, ",\n  "))
 		}
-		return buildAndLoadDeps(config, workDir, buildDir, newSortedDeps, nextUnresolvedSymbols, nextUnresolvedSymbols, seen, builtPackageImportPaths, buildPackageFilePaths, depth+1, linkerOpts, stdLibPkgs)
+		return buildAndLoadDeps(config, workDir, buildDir, newSortedDeps, nextUnresolvedSymbols, nextUnresolvedSymbols, seen, builtPackageImportPaths, buildPackageFilePaths, depth+1, linkerOpts, stdLibPkgs, pkgobjs)
 	}
 	return nil
 }
